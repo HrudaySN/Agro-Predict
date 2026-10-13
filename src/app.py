@@ -6,9 +6,9 @@ from pydantic import BaseModel
 app = FastAPI(title="AgroPredict")
 
 # Load model
-model_path = "models/xgb_model.pkl"
 try:
-  model = jb.load(model_path)
+  model = jb.load("models/xgb_model.pkl")
+  print("Model loaded successfully!")
 except Exception as e:
   print(f"Error loading model: {e}")
 
@@ -27,37 +27,48 @@ class FarmData(BaseModel):
 
 @app.get("/")
 def home():
-  return {"message": "Welcome to AgroPredict API"}
+  return {"message": "AgroPredict API is live"}
 
 
 @app.post("/predict")
 def predict(data: FarmData):
   try:
-    # 1. Convert incoming Pydantic data into a dictionary
-    input_data = data.dict()
+    # Print incoming payload to your terminal for debugging
+    print("Incoming Data:", data.dict())
 
-    # 2. Create DataFrame with explicit column order matching training features
-    feature_order = [
-        "State",
-        "Crop",
-        "Year",
-        "Area",
-        "Annual",
-        "Monsoon",
-        "PrevYearYield",
-        "Monsoon_ratio",
-        "Rainperarea",
-    ]
-    input_df = pd.DataFrame([input_data])[feature_order]
+    # Build DataFrame matching exact training feature order
+    input_df = pd.DataFrame([{
+        "State": data.State,
+        "Crop": data.Crop,
+        "Year": data.Year,
+        "Area": data.Area,
+        "Annual": data.Annual,
+        "Monsoon": data.Monsoon,
+        "PrevYearYield": data.PrevYearYield,
+        "Monsoon_ratio": data.Monsoon_ratio,
+        "Rainperarea": data.Rainperarea,
+    }])
 
-    # 3. Run prediction
-    prediction = model.predict(input_df)[0]
+    print("DataFrame sent to model:\n", input_df)
 
-    # 4. Format result
-    result = "High" if int(prediction) == 1 else "Low"
+    # Get prediction and probabilities
+    prediction = int(model.predict(input_df)[0])
 
-    return {"prediction": int(prediction), "risk_status": result}
+    # If the model supports predict_proba, print confidence
+    if hasattr(model, "predict_proba"):
+      proba = model.predict_proba(input_df)[0].tolist()
+      print(f"Prediction: {prediction}, Probabilities: {proba}")
+    else:
+      proba = []
+
+    result_status = "High" if prediction == 1 else "Low"
+
+    return {
+        "prediction": prediction,
+        "risk_status": result_status,
+        "probabilities": proba,
+    }
 
   except Exception as e:
-    # This will catch the exact error and display it clearly instead of a blank 500
+    print(f"Prediction Error: {e}")
     raise HTTPException(status_code=500, detail=str(e))
