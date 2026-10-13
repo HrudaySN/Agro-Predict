@@ -34,7 +34,7 @@ for year in range(2018,2027):
                 sim_annual = max(50, np.random.normal(mean_annual, std_annual * 0.15))
                 sim_monsoon = max(20, np.random.normal(mean_monsoon, std_monsoon * 0.15))
                 sim_yield = max(0, np.random.normal(mean_prev, std_prev * 0.1))
-                sim_target=1 if (sim_monsoon/sim_annual+1e-5)>0.4 else 0
+                sim_target=1 if (sim_monsoon/(sim_annual+1e-5))>0.4 else 0
                 
                 simulated_rows.append({
                                 'Year': year,
